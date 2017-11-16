@@ -1,0 +1,165 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: >
+
+    This SAM example creates the following resources:
+
+      S3 Bucket: S3 Bucket to hold the CloudTrail Logs
+      CloudTrail: Create CloudTrail trail for all regions and configures it to delivery logs to the above S3 Bucket
+      SNS Topic: Configure SNS topic to receive notifications when the CloudTrail log file is created in s3
+      Elasticsearch Domain: Create Elasticsearch Domain to hold the CloudTrail logs for advanced analytics
+      IAM Role: Create IAM Role for Lambda Execution and assigns Read Only S3 permission
+      Lambda Function:  Create Function which get's triggered when SNS receives notification, reads the contents from s3 and stores them in Elasticsearch Domain
+
+    Last Modified: 12nd November 2017
+    Author: Kuldeep Chowhan <kchowhan@expedia.com>
+Outputs:
+
+    S3Bucket:
+      Description: "S3 Bucket Name where CloudTrail Logs are delivered"
+      Value: !Ref S3Bucket
+    LambdaFunction:
+      Description: "Lambda Function that reads CloudTrail logs and stores them into Elasticsearch Domain"
+      Value: !GetAtt Function.Arn
+    ElasticsearchUrl:
+      Description: "Elasticsearch Domain Endpoint that you can use to access the CloudTrail logs and analyze them"
+      Value: !GetAtt ElasticsearchDomain.DomainEndpoint
+Resources:
+  SNSTopic:
+    Type: AWS::SNS::Topic
+  SNSTopicPolicy: 
+    Type: "AWS::SNS::TopicPolicy"
+    Properties: 
+      Topics: 
+        - Ref: "SNSTopic"
+      PolicyDocument: 
+        Version: "2008-10-17"
+        Statement: 
+          - 
+            Sid: "AWSCloudTrailSNSPolicy"
+            Effect: "Allow"
+            Principal: 
+              Service: "cloudtrail.amazonaws.com"
+            Resource: "*"
+            Action: "SNS:Publish"
+  S3Bucket:
+    Type: AWS::S3::Bucket
+  S3BucketPolicy: 
+    Type: "AWS::S3::BucketPolicy"
+    Properties: 
+      Bucket: 
+        Ref: S3Bucket
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Sid: "AWSCloudTrailAclCheck"
+            Effect: "Allow"
+            Principal: 
+              Service: "cloudtrail.amazonaws.com"
+            Action: "s3:GetBucketAcl"
+            Resource: 
+              !Sub |-
+                arn:aws:s3:::${S3Bucket}
+          - 
+            Sid: "AWSCloudTrailWrite"
+            Effect: "Allow"
+            Principal: 
+              Service: "cloudtrail.amazonaws.com"
+            Action: "s3:PutObject"
+            Resource:
+              !Sub |-
+                arn:aws:s3:::${S3Bucket}/AWSLogs/${AWS::AccountId}/*
+            Condition: 
+              StringEquals:
+                s3:x-amz-acl: "bucket-owner-full-control"
+  CloudTrail:
+    Type: AWS::CloudTrail::Trail
+    DependsOn:
+      - SNSTopicPolicy
+      - S3BucketPolicy
+    Properties: 
+        S3BucketName: 
+          Ref: S3Bucket
+        SnsTopicName: 
+          Fn::GetAtt: 
+            - SNSTopic
+            - TopicName
+        IsLogging: true
+        EnableLogFileValidation: true
+        IncludeGlobalServiceEvents: true
+        IsMultiRegionTrail: true
+  FunctionIAMRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+        Path: "/"
+        ManagedPolicyArns:
+            - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+            - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            -
+              Sid: "AllowLambdaServiceToAssumeRole"
+              Effect: "Allow"
+              Action: 
+                - "sts:AssumeRole"
+              Principal:
+                Service: 
+                  - "lambda.amazonaws.com"
+  ElasticsearchDomain: 
+    Type: AWS::Elasticsearch::Domain
+    DependsOn:
+      - FunctionIAMRole
+    Properties:
+      DomainName: "cloudtrail-log-analytics"
+      ElasticsearchClusterConfig: 
+        InstanceCount: "2"
+      EBSOptions: 
+        EBSEnabled: true
+        Iops: 0
+        VolumeSize: 20
+        VolumeType: "gp2"
+      AccessPolicies: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Sid: "AllowFunctionIAMRoleESHTTPFullAccess"
+            Effect: "Allow"
+            Principal: 
+              AWS: !GetAtt FunctionIAMRole.Arn
+            Action: "es:ESHttp*"
+            Resource:
+              !Sub |-
+                arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/cloudtrail-log-analytics/*
+          - 
+            Sid: "AllowFullAccesstoKibanaForEveryone"
+            Effect: "Allow"
+            Principal: 
+              AWS: "*"
+            Action: "es:*"
+            Resource:
+              !Sub |-
+                arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/cloudtrail-log-analytics/_plugin/kibana
+      ElasticsearchVersion: "5.5"
+  Function:
+    Type: 'AWS::Serverless::Function'
+    DependsOn:
+      - ElasticsearchDomain
+      - FunctionIAMRole
+    Properties:
+      Handler: index.handler
+      Runtime: python2.7
+      CodeUri: ./
+      Role: !GetAtt FunctionIAMRole.Arn
+      Events:
+        SNSEvent:
+          Type: SNS
+          Properties:
+            Topic: !Ref SNSTopic
+      Environment:
+        Variables:
+          es_host:
+            Fn::GetAtt: 
+              - ElasticsearchDomain
+              - DomainEndpoint
