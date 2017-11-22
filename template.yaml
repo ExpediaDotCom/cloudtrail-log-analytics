@@ -8,10 +8,9 @@ Description: >
       CloudTrail: Create CloudTrail trail for all regions and configures it to delivery logs to the above S3 Bucket
       SNS Topic: Configure SNS topic to receive notifications when the CloudTrail log file is created in s3
       Elasticsearch Domain: Create Elasticsearch Domain to hold the CloudTrail logs for advanced analytics
-      IAM Role: Create IAM Role for Lambda Execution and assigns Read Only S3 permission
       Lambda Function:  Create Function which get's triggered when SNS receives notification, reads the contents from s3 and stores them in Elasticsearch Domain
 
-    Last Modified: 12nd November 2017
+    Last Modified: 22nd November 2017
     Author: Kuldeep Chowhan <kchowhan@expedia.com>
 Outputs:
 
@@ -89,28 +88,8 @@ Resources:
         EnableLogFileValidation: true
         IncludeGlobalServiceEvents: true
         IsMultiRegionTrail: true
-  FunctionIAMRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-        Path: "/"
-        ManagedPolicyArns:
-            - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-            - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-        AssumeRolePolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            -
-              Sid: "AllowLambdaServiceToAssumeRole"
-              Effect: "Allow"
-              Action: 
-                - "sts:AssumeRole"
-              Principal:
-                Service: 
-                  - "lambda.amazonaws.com"
   ElasticsearchDomain: 
     Type: AWS::Elasticsearch::Domain
-    DependsOn:
-      - FunctionIAMRole
     Properties:
       DomainName: "cloudtrail-log-analytics"
       ElasticsearchClusterConfig: 
@@ -124,34 +103,28 @@ Resources:
         Version: "2012-10-17"
         Statement: 
           - 
-            Sid: "AllowFunctionIAMRoleESHTTPFullAccess"
+            Sid: "AllowESHTTPFullAccessToEveryone"
             Effect: "Allow"
             Principal: 
-              AWS: !GetAtt FunctionIAMRole.Arn
+              AWS: "*"
             Action: "es:ESHttp*"
             Resource:
               !Sub |-
                 arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/cloudtrail-log-analytics/*
-          - 
-            Sid: "AllowFullAccesstoKibanaForEveryone"
-            Effect: "Allow"
-            Principal: 
-              AWS: "*"
-            Action: "es:*"
-            Resource:
-              !Sub |-
-                arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/cloudtrail-log-analytics/_plugin/kibana
       ElasticsearchVersion: "5.5"
   Function:
     Type: 'AWS::Serverless::Function'
     DependsOn:
       - ElasticsearchDomain
-      - FunctionIAMRole
     Properties:
       Handler: index.handler
       Runtime: python2.7
       CodeUri: ./
-      Role: !GetAtt FunctionIAMRole.Arn
+      Policies:
+        - ElasticsearchHttpPostPolicy:
+            DomainName: !Ref ElasticsearchDomain
+        - S3ReadPolicy:
+            BucketName: !Ref S3Bucket
       Events:
         SNSEvent:
           Type: SNS
