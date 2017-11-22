@@ -103,7 +103,7 @@ Resources:
         Version: "2012-10-17"
         Statement: 
           - 
-            Sid: "AllowESHTTPFullAccessToRootAccount"
+            Sid: "AllowESHTTPFullAccessToEveryone"
             Effect: "Allow"
             Principal: 
               AWS: "*"

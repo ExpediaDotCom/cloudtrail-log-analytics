@@ -79,6 +79,6 @@ Refer to the [documentation](http://docs.aws.amazon.com/cli/latest/reference/clo
 <span style="color:red">**Please read this part**</span>
 
 The Amazon Elasticsearch Domain that the Serverless Application creates has the following access polices:
-- es:ESHttp* access to everyone to the domain
+- ```es:ESHttp*``` access to everyone to the domain
 
 I strongly recommend reading about Elasticsearch Service Access Policies using the below [documentation](http://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/es-createupdatedomains.html#es-createdomain-configure-access-policies) and modify the Access policy of the Elasticsearch domain to give full access to the Lambda's IAM role or give full es:ESHttp* access to your public IPs to the Elasticsearch Domain
