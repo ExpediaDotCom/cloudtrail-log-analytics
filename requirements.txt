@@ -1,6 +1,2 @@
-# Use pip’s freeze command to generate a requirements.txt file for your python project
-# $ pip freeze > requirements.txt
-# numpy is here as an example, replace this file with your real requirements.txt
 elasticsearch>=5.0.0,<6.0.0
 requests-aws4auth
-#git+https://github.com/elelsee/aws-es-connection.git

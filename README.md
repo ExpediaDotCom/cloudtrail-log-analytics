@@ -75,11 +75,10 @@ $ aws cloudformation deploy \
 
 Refer to the [documentation](http://docs.aws.amazon.com/cli/latest/reference/cloudformation/deploy/index.html) for more details.
 
-## Caveats:
-The Amazon Elasticsearch Domain that the Serverless Application created sets the following access polices:
-- Write access only to Function IAM role 
-- Read access to everyone on the Kibana Plugin
+## Caveats
+<span style="color:red">**Please read this part**</span>
 
-I recommend reading about Access Policies using the below [documentation](http://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/es-createupdatedomains.html#es-createdomain-configure-access-policies) and modify the Access policy to give full es:* access to your public IPs to the Elasticsearch Domain
+The Amazon Elasticsearch Domain that the Serverless Application creates has the following access polices:
+- es:ESHttp* access to everyone to the domain
 
-You can learn more about Amazon Elasticsearch Domain Access Polices [here](http://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/es-createupdatedomains.html#es-createdomain-configure-access-policies)
+I strongly recommend reading about Elasticsearch Service Access Policies using the below [documentation](http://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/es-createupdatedomains.html#es-createdomain-configure-access-policies) and modify the Access policy of the Elasticsearch domain to give full access to the Lambda's IAM role or give full es:ESHttp* access to your public IPs to the Elasticsearch Domain
