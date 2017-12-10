@@ -1,6 +1,6 @@
 # CloudTrail Log Analytics using AWS Lambda and Amazon ElasticSearch Service
 This AWS Serverless Application will help you analyze AWS CloudTrail Logs using 
-Amazon Elasticsearch Service. The application creations CloudTrail trail, sets
+Amazon Elasticsearch Service. The application creates CloudTrail trail, sets
 the log delivery to an s3 bucket that it creates and configures SNS delivery 
 whenever the CloudTrail log file has been written to s3 (AWS SAM). The app also
 creates an Amazon Elasticsearch Domain and creates an Amazon Lambda Function which
