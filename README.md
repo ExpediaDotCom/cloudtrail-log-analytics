@@ -31,7 +31,7 @@ can choose to do this manually or use `aws cloudformation package` [CLI command]
 To use this command, set `CodeUri` property to be the path to your 
 source code folder/zip/jar as shown in the example below. 
 
-**This is already taken care for you, the above documentation is for reference**
+**This is already taken care for you, the below documentation is for reference**
 
 ```YAML
 Function:
