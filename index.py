@@ -35,9 +35,9 @@ es = Elasticsearch(
 def handler(event, context):
     logger.info('Event: ' + json.dumps(event, indent=2))
 
-    s3Bucket = json.loads(event['Records'][0]['Sns']['Message'])['s3Bucket'].encode('utf8')
-    s3ObjectKey = urllib.unquote_plus(json.loads(event['Records'][0]['Sns']['Message'])['s3ObjectKey'][0].encode('utf8'))
-
+    s3Bucket = json.loads(event['Records'][0]['Sns']['Message'])['Records'][0]['s3']['bucket']['name'].encode('utf8')
+    s3ObjectKey = json.loads(event['Records'][0]['Sns']['Message'])['Records'][0]['s3']['object']['key'].encode('utf8')
+    
     logger.info('S3 Bucket: ' + s3Bucket)
     logger.info('S3 Object Key: ' + s3ObjectKey)
 
